@@ -9,6 +9,8 @@ import csv
 from pathlib import Path
 import numpy as np
 
+from personalization import Personalizer
+
 RESULTS = Path("results")
 ART = RESULTS / "artifacts"
 
@@ -62,7 +64,11 @@ def summarize(recs):
         if r["cry"]:
             h = r["minute"] // 60
             by_hour[h] = by_hour.get(h, 0) + 1
+    personal = Personalizer(alpha=0.02)          # 야간 데이터로 개인 baseline 학습
+    for r in recs:
+        personal.update(r["breathing_rate"], r["movement"])
     return {
+        "personal_bpm_range": personal.normal_bpm_range(),
         "monitored_min": len(recs),
         "cry_events": _events(recs, "cry"),
         "cry_minutes": sum(r["cry"] for r in recs),
@@ -110,6 +116,7 @@ def write_report(recs, s):
 
 ## 개인화(추세 기반) 제언
 
+- 학습된 개인 정상 호흡 범위: {s['personal_bpm_range']} 회/분 (이 아기 기준으로 임계값 보정).
 - 최장 안정 수면 {s['longest_calm_min']}분 기준으로 가구별 baseline을 갱신한다.
 - CO₂가 {s['co2_max']}ppm까지 상승 → 취침 전 환기 또는 공기청정 세기 상향을 제안.
 

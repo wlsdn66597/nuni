@@ -1,0 +1,3 @@
+household,true_bpm,learned_bpm,abs_error,normal_range
+babyA_bpm40,40.0,39.9,0.1,"(35.4, 44.3)"
+babyB_bpm52,52.0,52.0,0.0,"(48.1, 55.9)"

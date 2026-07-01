@@ -13,6 +13,7 @@ CRY = "audio/cry"             # 울음 분류 결과
 VOICE = "audio/voice"         # 부모 음성 인텐트
 FUSION_STATE = "fusion/state"  # 융합 판단 현재 상태
 ALERT = "fusion/alert"        # 경보 이벤트
+CONTROL = "control/action"    # 선제 환경 제어 권고
 
 
 def now() -> float:

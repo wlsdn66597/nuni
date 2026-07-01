@@ -11,6 +11,9 @@ class Store:
         self.radar_hist = collections.deque(maxlen=60)      # 호흡 파형
         self.events = collections.deque(maxlen=12)          # 이벤트 로그
         self.fusion = {"level": "normal", "reasons": []}
+        self.sleep_state = {"state": "unknown", "reason": ""}   # 일상 수면/각성 상태
+        self.actions = []                                       # 선제 환경 제어 권고
+        self.personal = {}                                      # 개인화 baseline 요약
         self._inject = {}                                   # kind -> deadline(ts)
 
     def update(self, topic, payload):
@@ -22,6 +25,18 @@ class Store:
     def set_fusion(self, level, reasons):
         with self.lock:
             self.fusion = {"level": level, "reasons": reasons}
+
+    def set_sleep_state(self, state, reason):
+        with self.lock:
+            self.sleep_state = {"state": state, "reason": reason}
+
+    def set_actions(self, actions):
+        with self.lock:
+            self.actions = list(actions)
+
+    def set_personal(self, summary):
+        with self.lock:
+            self.personal = dict(summary)
 
     def log(self, msg):
         with self.lock:
@@ -48,6 +63,9 @@ class Store:
                 "radar": list(self.radar_hist),
                 "events": list(self.events),
                 "fusion": dict(self.fusion),
+                "sleep_state": dict(self.sleep_state),
+                "actions": list(self.actions),
+                "personal": dict(self.personal),
             }
 
 

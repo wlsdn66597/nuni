@@ -20,6 +20,13 @@ LEVEL_UI = {
     "alert": ("경보", "🔴", "error"),
 }
 
+SLEEP_UI = {
+    "calm_sleep": "😴 안정 수면",
+    "restless": "🌀 뒤척임",
+    "awake": "👀 각성",
+    "unknown": "· 재실 없음",
+}
+
 with st.sidebar:
     st.header("데모 시나리오")
     if st.button("👶 울음 발생", use_container_width=True):
@@ -45,6 +52,12 @@ while True:
         reason = ", ".join(snap["fusion"]["reasons"]) or "이상 없음"
         getattr(st, kind)(f"{icon}  상태: {label}  —  {reason}")
 
+        ss = snap["sleep_state"]
+        st.markdown(f"### 수면 상태: {SLEEP_UI.get(ss['state'], ss['state'])}")
+        p = snap.get("personal", {})
+        if p.get("bpm_normal_range"):
+            st.caption(f"개인화 정상 호흡 범위 {p['bpm_normal_range']} 회/분 (학습 표본 {p.get('samples')})")
+
         c1 = st.columns(4)
         c1[0].metric("호흡수(회/분)", r.get("breathing_rate", "-"))
         c1[1].metric("움직임", r.get("movement", "-"))
@@ -56,6 +69,12 @@ while True:
         c2[1].metric("습도(%)", e.get("humidity", "-"))
         c2[2].metric("CO₂(ppm)", e.get("co2", "-"))
         c2[3].metric("조도(lux)", e.get("lux", "-"))
+
+        acts = snap.get("actions", [])
+        if acts:
+            st.subheader("환경 제어 권고 (선제 케어)")
+            for _a, _reason in acts:
+                st.write(f"• {_reason}")
 
         st.subheader("호흡 파형 (최근 60초)")
         if snap["radar"]:

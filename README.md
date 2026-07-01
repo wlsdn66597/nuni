@@ -1,7 +1,8 @@
 # NUNI — 비접촉 영유아 케어 AI (소프트웨어)
 
-레이더·음향·환경 센서로 **카메라·웨어러블 없이** 영유아의 호흡·움직임·울음을 해석하고,
-이상 징후를 선제적으로 알리는 AI 시스템의 **소프트웨어 파이프라인**.
+레이더·음향·환경 센서로 **카메라·웨어러블 없이** 영유아의 **수면·상태를 일상적으로
+모니터링**하고, 울음 대응·환경 제어·개인화로 선제 케어하는 AI 시스템의 **소프트웨어
+파이프라인**. (드문 호흡 이상은 안전 백업으로 감지하되 의료기기 주장은 하지 않는다.)
 
 > **대회**: 2026 AI소프트웨어공모전 (임베디드SW 트랙) — 1차 결과보고서 + 2차 데모 심사
 > **현재 단계**: 소프트웨어 구현 완료(시뮬레이션·공개데이터 검증) / 실물 센서 통합은 2차 데모까지
@@ -27,7 +28,9 @@
 
 | 구분 | 항목 |
 |---|---|
-| **완료 (소프트웨어)** | MQTT 아키텍처 · 멀티모달 융합 엔진 · 울음 분류(YAMNet 전이학습) · 대시보드 · 알림 · 평가 프레임워크 |
+| **메인 (일상)** | 수면/각성 상태 분류 · 울음 감지 · 환경 모니터링·선제 제어 · 개인화(적응형 baseline) · 수면 리포트 |
+| **안전 백업 (드묾)** | 호흡 이상/무호흡 감지 알림 (의료기기 아님) |
+| **기반 (완료)** | MQTT 아키텍처 · 멀티모달 융합 엔진 · 대시보드 · 평가 프레임워크 |
 | **2차 데모까지 예정** | 실물 60GHz 레이더·환경센서 통합 · 원거리 마이크 실수음 · 실환경 재검증 |
 
 ## 4. 저장소 구성
@@ -45,6 +48,9 @@ nuni_demo/
 ├─ eval_radar_robustness.py  # 레이더 강건성 스윕 (SNR·윈도우)
 ├─ eval_fusion.py       # 융합 vs 단일센서 오탐/미탐 평가 (+경계신호 교차검증)
 ├─ eval_stream.py       # 스트리밍 시계열 평가 (디바운스·쿨다운 검증)
+├─ sleep_state.py       # 수면/각성 상태 분류 (일상 헤드라인) + eval_sleep_state.py
+├─ personalization.py   # 경량 개인화(적응형 baseline) + eval_personalization.py
+├─ env_control.py       # 선제 환경 제어 권고 + eval_env_control.py
 ├─ voice_intent.py      # 부모 음성 인텐트 인식 (키워드/STT)
 ├─ cloud.py             # 클라우드 스텁 + 아침 수면 리포트
 ├─ requirements.txt     # 데모 실행 의존성
@@ -153,6 +159,9 @@ streamlit run app.py
 - `results/RADAR_DSP_RESULT.md`
 - `results/FUSION_EVALUATION_RESULT.md`
 - `results/STREAM_EVAL_RESULT.md` (디바운스·쿨다운 시계열 검증)
+- `results/SLEEP_STATE_RESULT.md` (수면/각성 상태 분류)
+- `results/PERSONALIZATION_RESULT.md` (개인화 적응)
+- `results/ENV_CONTROL_RESULT.md` (선제 환경 제어)
 - `results/VOICE_INTENT_RESULT.md` (음성 인텐트 인식)
 - `results/SLEEP_REPORT.md` (클라우드 아침 수면 리포트)
 - `results/RESULTS.md`

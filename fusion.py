@@ -9,6 +9,10 @@ import bus
 from state_store import store
 import time
 
+import sleep_state
+import env_control
+from personalization import Personalizer
+
 _ORDER = {"normal": 0, "attention": 1, "alert": 2}
 
 
@@ -87,6 +91,7 @@ class Fusion:
         self._candidate_count = 0
         self._last_alert_key = None
         self._last_alert_ts = 0.0
+        self.personalizer = Personalizer()   # 개인화 baseline 학습
 
     def _debounce(self, level):
         if level == "normal":
@@ -122,6 +127,19 @@ class Fusion:
             store.log(f"[{level.upper()}] " + ", ".join(out_reasons))
             bus.publish(topics.ALERT, {"level": level, "reason": ", ".join(out_reasons), "ts": topics.now()})
             emitted = True
+
+        # --- 일상 모니터링(헤드라인): 수면상태 · 개인화 · 선제 환경제어 ---
+        ss, ss_reason = sleep_state.classify(self.radar, self.cry)
+        store.set_sleep_state(ss, ss_reason)
+        if self.radar:
+            self.personalizer.update(self.radar.get("breathing_rate", 0),
+                                     self.radar.get("movement", 0.0))
+            store.set_personal(self.personalizer.summary())
+        actions = env_control.recommend(self.env, ss)
+        store.set_actions(actions)
+        if actions:
+            bus.publish(topics.CONTROL, {"actions": [a for a, _ in actions], "ts": topics.now()})
+
         self.last = level
         return level, out_reasons, emitted
 
