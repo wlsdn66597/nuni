@@ -7,22 +7,36 @@
 """
 import random
 import time
+import collections
 
 import topics
 import bus
+import radar_dsp
+import radar_sim_signal
 from state_store import store
+
+# 원신호 스트리밍 버퍼: 실제 DSP가 호흡수를 추출한다.
+_FS = 20
+_WINDOW_S = 20
+_src = radar_sim_signal.RadarSource(fs=_FS)
+_buf = collections.deque(maxlen=_FS * _WINDOW_S)
 
 
 def radar_step() -> dict:
     inj = store.active_injects()
-    if "apnea" in inj:                       # 무호흡 시나리오
-        br = random.uniform(0, 4)
+    # === 실물 교체 지점 ===
+    # 아래 next_chunk(합성 원신호) 대신 60GHz 모듈의 원신호 1초를 읽어 _buf.extend() 하면
+    # radar_dsp.analyze()는 그대로 실물 신호를 처리한다.
+    if "apnea" in inj:                                   # 무호흡: 진폭 급감
+        chunk = _src.next_chunk(1.0, bpm=40, amp=0.05)
     else:
-        br = random.gauss(40, 3)             # 영유아 정상 호흡 ~40회/분
-    movement = random.uniform(0, 0.2)
-    if random.random() < 0.05:               # 가끔 뒤척임
-        movement = random.uniform(0.6, 1.0)
-    return topics.radar_msg(round(br, 1), round(movement, 2), True)
+        bpm = random.gauss(40, 2)                        # 영유아 정상 ~40회/분
+        motion = random.uniform(0.6, 1.0) if random.random() < 0.05 else 0.0  # 뒤척임
+        chunk = _src.next_chunk(1.0, bpm=bpm, amp=1.0, motion=motion)
+    _buf.extend(chunk)
+
+    r = radar_dsp.analyze(list(_buf), _FS)               # 실제 호흡 DSP
+    return topics.radar_msg(r["breathing_rate"], r["movement"], True)
 
 
 def env_step() -> dict:

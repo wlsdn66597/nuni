@@ -68,6 +68,24 @@ def main():
     print(f"{'단일 센서':<16} 오탐 {s_fa}건 · 미탐 {s_miss}건")
     print(f"{'멀티모달 융합':<14} 오탐 {f_fa}건 · 미탐 {f_miss}건")
 
+    ablation()
+
+
+def ablation():
+    """모달리티 기여도: 한 종류만 사용할 때 오탐/미탐 변화."""
+    modes = {
+        "레이더만": lambda r, c, e: decide(r, None, None),
+        "음향만": lambda r, c, e: decide(None, c, None),
+        "환경만": lambda r, c, e: decide(None, None, e),
+        "전체 융합": decide,
+    }
+    print("\n=== 모달리티 기여도 (ablation) ===")
+    print(f"{'구성':<12}{'오탐':<8}{'미탐':<8}")
+    print("-" * 28)
+    for name, pol in modes.items():
+        fa, miss = evaluate(pol)
+        print(f"{name:<12}{fa:<8}{miss:<8}")
+
 
 if __name__ == "__main__":
     main()

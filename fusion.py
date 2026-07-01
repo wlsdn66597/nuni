@@ -56,12 +56,21 @@ def single_sensor_decide(radar, cry, env):
     return "normal", []
 
 
+DEBOUNCE = 2        # 비정상이 연속 N회일 때만 확정 (일시적 튐 억제)
+COOLDOWN_S = 10     # 동일 경보 반복 알림 억제 구간(초)
+
+
 class Fusion:
-    """라이브 구독자: 최신 신호를 모아 판단하고 상태/경보를 발행."""
+    """라이브 구독자: 최신 신호를 모아 판단하고 상태/경보를 발행.
+
+    decide()(순수 규칙) 위에 시간 디바운스와 쿨다운을 얹어 알림 피로를 줄인다.
+    """
 
     def __init__(self):
         self.radar = self.cry = self.env = None
-        self.last = "normal"
+        self.confirmed = "normal"
+        self._streak = 0
+        self._last_alert_ts = 0.0
 
     def on_message(self, topic, payload):
         if topic == topics.RADAR:
@@ -72,10 +81,20 @@ class Fusion:
             self.env = payload
 
         level, reasons = decide(self.radar, self.cry, self.env)
-        store.set_fusion(level, reasons)
-        bus.publish(topics.FUSION_STATE, {"level": level, "reasons": reasons, "ts": topics.now()})
 
-        if level != "normal" and level != self.last:
-            store.log(f"[{level.upper()}] " + ", ".join(reasons))
-            bus.publish(topics.ALERT, {"level": level, "reason": ", ".join(reasons), "ts": topics.now()})
-        self.last = level
+        # 디바운스: 비정상이 연속 DEBOUNCE회 이상일 때만 확정
+        self._streak = self._streak + 1 if level != "normal" else 0
+        confirmed = level if (level == "normal" or self._streak >= DEBOUNCE) else "normal"
+        show = reasons if confirmed != "normal" else []
+
+        store.set_fusion(confirmed, show)
+        bus.publish(topics.FUSION_STATE, {"level": confirmed, "reasons": show, "ts": topics.now()})
+
+        # 상태 전이 + 쿨다운: 동일 경보 반복 로깅 억제
+        if confirmed in ("attention", "alert") and confirmed != self.confirmed:
+            now = topics.now()
+            if now - self._last_alert_ts >= COOLDOWN_S:
+                store.log(f"[{confirmed.upper()}] " + ", ".join(show))
+                bus.publish(topics.ALERT, {"level": confirmed, "reason": ", ".join(show), "ts": topics.now()})
+                self._last_alert_ts = now
+        self.confirmed = confirmed

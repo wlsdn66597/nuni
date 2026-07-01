@@ -13,9 +13,10 @@ cry_model/_donateacry/
 cry_model/ESC-50-master/
 *.zip
 
-# 학습 산출물 / 캐시 (재생성 가능)
+# 학습 산출물 / 캐시 / 실행 결과 (재생성 가능)
 cry_model/artifacts/
 cry_model/.emb_cache/
+results/
 *.keras
 *.npy
 
