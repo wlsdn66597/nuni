@@ -2,9 +2,9 @@
 
 ## Environment
 
-- Python: 3.9.7
-- Git commit: `fa7beaa18847af304d854b85e2145f233d223cd7`
-- Generated at: 2026-07-02 03:02:34
+- Python: 3.10.12
+- Git commit: `1d2b5f5f2ae027663d200226e58bd93ea3bb7c1d`
+- Generated at: 2026-07-02 03:19:50
 
 ## Summary
 
@@ -27,8 +27,10 @@
 
 ## Positioning
 
-- Main tasks: everyday non-contact monitoring (sleep/wake state, cry detection, environment) + proactive control + personalization.
-- Apnea/breathing-abnormality is a rare safety backup, not the headline, and is not a medical-grade claim.
+- Main tasks: everyday non-contact monitoring (sleep/wake state, cry detection,
+  environment) + proactive control + personalization.
+- Apnea/breathing-abnormality is a rare safety backup, not the headline, and is not
+  a medical-grade claim.
 
 ## Limits
 
