@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# 데이터 (용량·라이선스 → 커밋하지 않음)
+cry_model/data/
+cry_model/noise/
+cry_model/rir/
+cry_model/_donateacry/
+cry_model/ESC-50-master/
+*.zip
+
+# 학습 산출물 / 캐시 (재생성 가능)
+cry_model/artifacts/
+cry_model/.emb_cache/
+*.keras
+*.npy
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,54 @@
+"""대시보드가 읽는 스레드 안전 최신 상태 저장소."""
+import threading
+import time
+import collections
+
+
+class Store:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.latest = {}                                    # topic -> payload
+        self.radar_hist = collections.deque(maxlen=60)      # 호흡 파형
+        self.events = collections.deque(maxlen=12)          # 이벤트 로그
+        self.fusion = {"level": "normal", "reasons": []}
+        self._inject = {}                                   # kind -> deadline(ts)
+
+    def update(self, topic, payload):
+        with self.lock:
+            self.latest[topic] = payload
+            if topic == "sensor/radar":
+                self.radar_hist.append(payload.get("breathing_rate", 0))
+
+    def set_fusion(self, level, reasons):
+        with self.lock:
+            self.fusion = {"level": level, "reasons": reasons}
+
+    def log(self, msg):
+        with self.lock:
+            self.events.appendleft(time.strftime("%H:%M:%S") + "  " + msg)
+
+    # --- 데모 시나리오 주입 ---
+    def set_inject(self, kind, seconds):
+        with self.lock:
+            self._inject[kind] = time.time() + seconds
+
+    def clear_inject(self):
+        with self.lock:
+            self._inject = {}
+
+    def active_injects(self):
+        now = time.time()
+        with self.lock:
+            return {k for k, dl in self._inject.items() if dl > now}
+
+    def snapshot(self):
+        with self.lock:
+            return {
+                "latest": dict(self.latest),
+                "radar": list(self.radar_hist),
+                "events": list(self.events),
+                "fusion": dict(self.fusion),
+            }
+
+
+store = Store()
