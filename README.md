@@ -102,13 +102,61 @@ python cry_model/evaluate.py cry_model/data       # held-out 재평가
 | **대시보드 스크린샷** | `streamlit run app.py` 실행 화면 | 작품 사진 / 구현기능 |
 | **E2E 지연 측정** | 이벤트→알림 타임스탬프 | 검증 방법 및 결과 |
 
-## 9. 실물 교체 지점 (2차 데모까지)
+## 9. Reproducible Software Verification
+
+하드웨어 없이 재현 가능한 검증 스크립트를 제공한다. 아래 결과는 현재 코드 기준으로 `bash run_all.sh`를 실행해 얻은 값이며, 실제 60GHz 레이더 하드웨어나 실제 영유아 환경 검증이 아니다.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+bash run_all.sh
+streamlit run app.py
+```
+
+### 핵심 결과
+
+| 영역 | 항목 | 결과 | 조건/산출물 |
+|---|---|---:|---|
+| Radar DSP | BPM MAE | 0.500 breaths/min | synthetic raw radar-like signal, 30s, fs=50Hz, SNR 15dB |
+| Radar DSP | Apnea detection | True, delay 4.0s | synthetic apnea scenario |
+| Radar DSP | Motion detection | True | synthetic motion burst |
+| Fusion | full_fusion false alarm / miss | 0 / 0 | controlled scenarios 8개 |
+| Fusion | single_sensor false alarm / miss | 5 / 0 | controlled scenarios 8개 |
+| Fusion ablation | radar_only false alarm / miss | 0 / 0 | radar apnea가 핵심 위험 신호로 동작 |
+| Fusion ablation | audio_only false alarm / miss | 2 / 1 | cry-only 정책의 오탐/미탐 확인 |
+| Fusion ablation | env_only false alarm / miss | 2 / 2 | 환경 단독 정책의 한계 확인 |
+| Cry reason classifier | Donate-a-Cry 5-class | 실사용 성능 주장 불가 | hungry 83.6% class imbalance |
+
+### 결과 해석
+
+- 레이더 DSP는 실제 센서가 아니라 synthetic raw radar-like signal을 입력으로 검증했다.
+- controlled scenario에서는 full fusion이 false alarm 0, miss 0을 기록했지만, radar_only도 0/0으로 나온다. 따라서 “full fusion이 모든 단일 모달보다 항상 우수하다”가 아니라, 현재 시나리오에서는 radar가 무호흡 판단의 핵심 기여 모달이고 audio/env는 보조 context로 해석해야 한다.
+- single_sensor baseline은 단일 신호에 민감하게 반응해 false alarm 5건이 발생했다.
+- Donate-a-Cry 기반 울음 이유 분류는 `hungry`가 382/457개(83.6%)로 치우쳐 있고 rare class가 적어, 현재 결과를 실사용 가능한 이유 분류 성능으로 주장하지 않는다.
+
+### 한계
+
+- 실제 60GHz 레이더 하드웨어 성능을 검증한 결과가 아니다.
+- synthetic apnea/motion smoke test는 실환경 무호흡/움직임 탐지 검증이 아니다.
+- 실제 영유아 대상 성능 또는 임상적 안전성을 검증하지 않았다.
+- YAMNet cry detection 결과는 synthetic negative 기준 smoke test이며 실제 생활 소음에서의 precision을 보장하지 않는다.
+- Donate-a-Cry 5-class reason classifier는 class imbalance 때문에 실험적 기능으로만 다룬다.
+
+주요 산출물:
+
+- `results/RADAR_DSP_RESULT.md`
+- `results/FUSION_EVALUATION_RESULT.md`
+- `results/RESULTS.md`
+- `results/RESULTS_FINAL.md`
+
+## 10. 실물 교체 지점 (2차 데모까지)
 
 1. **센서**: `sim_sensors.py`의 `radar_step()/env_step()`를 실물 UART/I2C 읽기로 교체 (토픽 동일)
 2. **울음**: `cry_classifier.py` `REAL=True` + 학습된 `artifacts/` 사용
 3. **분산 실행**: `NUNI_BUS=mqtt` + 로컬 Mosquitto → 각 모듈 별도 프로세스
 
-## 10. 검증 방법 & 정직성
+## 11. 검증 방법 & 정직성
 
 - 울음/음성: **공개 데이터 라벨 = GT**, 화자단위 held-out.
 - 레이더/환경: **시뮬레이션·공개데이터로 검증**(코드에 시뮬 명시), 실물 재검증은 2차.

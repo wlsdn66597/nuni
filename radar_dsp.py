@@ -1,50 +1,82 @@
-"""레이더 원신호 → 호흡수·움직임·무호흡 추출 (실제 DSP).
+"""Synthetic-signal radar DSP helpers.
 
-FFT 기반 호흡대역 피크 검출. 원신호가 시뮬이든 실물이든 동일 알고리즘을 쓴다.
-(MR60BHA2처럼 호흡수를 직접 출력하는 모듈이면 이 DSP는 검증/백업 경로로,
- BGT60TR13C 같은 원신호 모듈이면 이 DSP가 추출기 본체로 동작.)
+These functions are for software-only validation with synthetic raw signals.
+They do not prove performance on a real 60GHz radar module or real infants.
 """
 import numpy as np
 
-BREATHING_BAND = (0.1, 1.0)   # Hz = 6~60회/분 (영유아 포함)
-APNEA_AMP = 0.15              # 최근 창 RMS 진폭이 이 이하이면 호흡 미검출(무호흡)
-APNEA_WIN_S = 4              # 무호흡 판정용 최근 창(초) - 긴 호흡창과 분리해 반응성 확보
-MOVE_GAIN = 4.0              # 움직임 지표 스케일
+
+def _as_float_array(signal):
+    x = np.asarray(signal, dtype=float)
+    if x.ndim != 1:
+        x = x.reshape(-1)
+    return x
 
 
-def analyze(sig, fs):
-    """→ {breathing_rate(회/분), amplitude, movement(0~1)}"""
-    x0 = np.asarray(sig, dtype=float)
-    if len(x0) < 8:
-        return {"breathing_rate": 0.0, "amplitude": 0.0, "movement": 0.0}
+def estimate_bpm_fft(signal, fs, min_bpm=15, max_bpm=70):
+    """Estimate breathing BPM from a synthetic raw signal using FFT peak search."""
+    x = _as_float_array(signal)
+    if len(x) < 2:
+        return 0.0
+    x = x - np.mean(x)
+    win = np.hanning(len(x))
+    spec = np.abs(np.fft.rfft(x * win))
+    freqs = np.fft.rfftfreq(len(x), d=1.0 / fs)
+    min_hz, max_hz = min_bpm / 60.0, max_bpm / 60.0
+    mask = (freqs >= min_hz) & (freqs <= max_hz)
+    if not np.any(mask):
+        return 0.0
+    peak_idx = np.argmax(spec[mask])
+    peak_hz = freqs[mask][peak_idx]
+    return float(peak_hz * 60.0)
 
-    x = x0 - np.mean(x0)
 
-    # 무호흡: 최근 APNEA_WIN_S초 창의 RMS 진폭 (긴 창은 짧은 정지를 희석)
-    rec = x0[-int(APNEA_WIN_S * fs):] if len(x0) >= APNEA_WIN_S * fs else x0
-    amp = float(np.sqrt(np.mean((rec - rec.mean()) ** 2)))
+def detect_apnea(signal, fs, window_s=4.0, amp_threshold_ratio=0.2):
+    """Detect synthetic apnea by comparing recent RMS to earlier baseline RMS."""
+    x = _as_float_array(signal)
+    n = int(window_s * fs)
+    if len(x) < max(2, n):
+        return False
+    recent = x[-n:] - np.mean(x[-n:])
+    baseline_region = x[:-n] if len(x) > n else x
+    baseline_region = baseline_region - np.mean(baseline_region)
+    recent_rms = float(np.sqrt(np.mean(recent ** 2)) + 1e-12)
+    baseline_rms = float(np.sqrt(np.mean(baseline_region ** 2)) + 1e-12)
+    return bool(recent_rms < amp_threshold_ratio * baseline_rms)
 
-    w = np.hanning(len(x))
-    X = np.abs(np.fft.rfft(x * w))
-    f = np.fft.rfftfreq(len(x), 1.0 / fs)
 
-    band = (f >= BREATHING_BAND[0]) & (f <= BREATHING_BAND[1])
-    br = 0.0
-    if band.any() and X[band].max() > 0:
-        br = float(f[band][np.argmax(X[band])] * 60.0)   # 호흡수: 긴 창(주파수 해상도)
+def _high_freq_energy(x, fs, highpass_hz):
+    x = _as_float_array(x)
+    if len(x) < 2:
+        return 0.0
+    x = x - np.mean(x)
+    spec = np.abs(np.fft.rfft(x * np.hanning(len(x)))) ** 2
+    freqs = np.fft.rfftfreq(len(x), d=1.0 / fs)
+    return float(np.sum(spec[freqs >= highpass_hz]) / max(1, len(x)))
 
-    # 움직임: 최근 2초 창의 고주파 에너지 비율 (반응성)
-    tail = x[-int(2 * fs):] if len(x) >= 2 * fs else x
-    Xt = np.abs(np.fft.rfft(tail * np.hanning(len(tail))))
-    ft = np.fft.rfftfreq(len(tail), 1.0 / fs)
-    band_t = (ft >= BREATHING_BAND[0]) & (ft <= BREATHING_BAND[1])
-    hi_t = ft > BREATHING_BAND[1]
-    e_band = float((Xt[band_t] ** 2).sum()) + 1e-9
-    e_hi = float((Xt[hi_t] ** 2).sum()) if hi_t.any() else 0.0
-    movement = float(np.clip(e_hi / (e_band + e_hi) * MOVE_GAIN, 0, 1))
 
-    if amp < APNEA_AMP:            # 무호흡: 호흡 진폭 급감
-        br = 0.0
+def detect_motion(signal, fs, window_s=2.0, highpass_hz=1.5, threshold_ratio=2.0):
+    """Detect synthetic motion from recent high-frequency energy."""
+    x = _as_float_array(signal)
+    n = int(window_s * fs)
+    if len(x) < max(2, n):
+        return False
+    recent = x[-n:]
+    baseline = x[:-n] if len(x) > n else x
+    recent_energy = _high_freq_energy(recent, fs, highpass_hz)
+    baseline_energy = _high_freq_energy(baseline, fs, highpass_hz) + 1e-12
+    return bool(recent_energy > threshold_ratio * baseline_energy)
 
-    return {"breathing_rate": round(br, 1), "amplitude": round(amp, 3),
-            "movement": round(movement, 2)}
+
+def process_radar_buffer(signal, fs):
+    """Process a synthetic radar buffer into fields used by the app/fusion."""
+    bpm = estimate_bpm_fft(signal, fs)
+    apnea = detect_apnea(signal, fs)
+    motion = detect_motion(signal, fs)
+    return {
+        "breathing_bpm": round(bpm, 2),
+        "breathing_rate": round(0.0 if apnea else bpm, 2),
+        "apnea": bool(apnea),
+        "motion": bool(motion),
+        "movement": 1.0 if motion else 0.1,
+    }

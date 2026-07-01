@@ -1,52 +1,80 @@
-"""융합 vs 단일 센서 정책 비교 평가 (보고서용 결과 생성).
+"""Controlled evaluation for single-sensor, ablation, and fusion policies."""
+import csv
+from pathlib import Path
 
-라벨된 시나리오에서 각 정책의 오탐(false alarm)/미탐(miss)을 계산한다.
-실행: python eval_fusion.py
-"""
 from fusion import decide, single_sensor_decide
 
-# (이름, radar, cry, env, 정답=경보여야 하는가)
+
+RESULTS = Path("results")
+ART = RESULTS / "artifacts"
+
+
 SCENARIOS = [
-    ("정상 수면",
+    ("normal",
      {"presence": True, "breathing_rate": 40, "movement": 0.1},
-     {"is_crying": False, "confidence": 0.1},
+     {"is_crying": False, "cls": "none", "confidence": 0.1},
      {"co2": 600, "temp": 22}, False),
-    ("무호흡",
-     {"presence": True, "breathing_rate": 3, "movement": 0.05},
-     {"is_crying": False, "confidence": 0.1},
+    ("cry_only",
+     {"presence": True, "breathing_rate": 40, "movement": 0.1},
+     {"is_crying": True, "cls": "hungry", "confidence": 0.85},
+     {"co2": 600, "temp": 22}, False),
+    ("bad_env_only",
+     {"presence": True, "breathing_rate": 40, "movement": 0.1},
+     {"is_crying": False, "cls": "none", "confidence": 0.1},
+     {"co2": 1200, "temp": 22}, False),
+    ("apnea_only",
+     {"presence": True, "breathing_rate": 3, "movement": 0.05, "apnea": True},
+     {"is_crying": False, "cls": "none", "confidence": 0.1},
      {"co2": 600, "temp": 22}, True),
-    ("울음+뒤척임",
-     {"presence": True, "breathing_rate": 42, "movement": 0.7},
-     {"is_crying": True, "cls": "discomfort", "confidence": 0.85},
-     {"co2": 650, "temp": 22}, True),
-    ("외부 소음 오검출",
-     {"presence": True, "breathing_rate": 40, "movement": 0.1},
-     {"is_crying": True, "cls": "hungry", "confidence": 0.62},
-     {"co2": 600, "temp": 22}, False),
-    ("일시적 큰 움직임",
-     {"presence": True, "breathing_rate": 41, "movement": 0.8},
-     {"is_crying": False, "confidence": 0.1},
-     {"co2": 600, "temp": 22}, False),
-    ("CO₂ 약간 상승",
-     {"presence": True, "breathing_rate": 40, "movement": 0.1},
-     {"is_crying": False, "confidence": 0.1},
-     {"co2": 850, "temp": 22}, False),
-    ("무호흡+울음",
-     {"presence": True, "breathing_rate": 4, "movement": 0.2},
+    ("apnea_with_cry",
+     {"presence": True, "breathing_rate": 3, "movement": 0.2, "apnea": True},
      {"is_crying": True, "cls": "discomfort", "confidence": 0.9},
      {"co2": 600, "temp": 22}, True),
-    ("온도 이상만",
-     {"presence": True, "breathing_rate": 40, "movement": 0.1},
-     {"is_crying": False, "confidence": 0.1},
-     {"co2": 600, "temp": 29}, False),
+    ("motion_noise_only",
+     {"presence": True, "breathing_rate": 41, "movement": 0.85},
+     {"is_crying": False, "cls": "none", "confidence": 0.1},
+     {"co2": 600, "temp": 22}, False),
+    ("bad_env_with_cry",
+     {"presence": True, "breathing_rate": 42, "movement": 0.1},
+     {"is_crying": True, "cls": "hungry", "confidence": 0.82},
+     {"co2": 1250, "temp": 22}, False),
+    ("transient_spike",
+     {"presence": True, "breathing_rate": 40, "movement": 0.95},
+     {"is_crying": False, "cls": "none", "confidence": 0.1},
+     {"co2": 650, "temp": 22}, False),
 ]
+
+
+def radar_only(radar, cry, env):
+    return decide(radar, {"is_crying": False, "confidence": 0.0}, {})
+
+
+def audio_only(radar, cry, env):
+    if cry and cry.get("is_crying") and cry.get("confidence", 0) >= 0.7:
+        return "alert", ["울음(음향만)"]
+    return "normal", []
+
+
+def env_only(radar, cry, env):
+    if env and (env.get("co2", 0) > 1000 or env.get("temp", 22) < 18 or env.get("temp", 22) > 26):
+        return "alert", ["환경(환경만)"]
+    return "normal", []
+
+
+POLICIES = {
+    "single_sensor": single_sensor_decide,
+    "radar_only": radar_only,
+    "audio_only": audio_only,
+    "env_only": env_only,
+    "full_fusion": decide,
+}
 
 
 def evaluate(policy):
     fa = miss = 0
     for _, r, c, e, expected in SCENARIOS:
         level, _ = policy(r, c, e)
-        pred = (level == "alert")
+        pred = level == "alert"
         if pred and not expected:
             fa += 1
         if expected and not pred:
@@ -54,19 +82,63 @@ def evaluate(policy):
     return fa, miss
 
 
-def main():
-    print(f"{'시나리오':<16}{'정답':<8}{'단일센서':<12}{'융합':<10}")
-    print("-" * 48)
-    for name, r, c, e, expected in SCENARIOS:
-        s, _ = single_sensor_decide(r, c, e)
-        f, _ = decide(r, c, e)
-        print(f"{name:<16}{('경보' if expected else '정상'):<8}{s:<12}{f:<10}")
+def write_outputs(rows, summary):
+    ART.mkdir(parents=True, exist_ok=True)
+    with (ART / "fusion_eval_summary.csv").open("w", newline="") as f:
+        fieldnames = ["scenario", "expected"] + list(POLICIES)
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(rows)
+    with (ART / "fusion_ablation_summary.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["policy", "false_alarm", "miss"])
+        w.writeheader()
+        w.writerows(summary)
 
-    s_fa, s_miss = evaluate(single_sensor_decide)
-    f_fa, f_miss = evaluate(decide)
-    print("-" * 48)
-    print(f"{'단일 센서':<16} 오탐 {s_fa}건 · 미탐 {s_miss}건")
-    print(f"{'멀티모달 융합':<14} 오탐 {f_fa}건 · 미탐 {f_miss}건")
+    lines = [
+        "# Fusion Evaluation Result",
+        "",
+        f"- Controlled scenarios: {len(SCENARIOS)}",
+        "- Metrics are computed from this script at runtime.",
+        "",
+        "## Policy Summary",
+        "",
+        "| policy | false alarm | miss |",
+        "|---|---:|---:|",
+    ]
+    for row in summary:
+        lines.append(f"| {row['policy']} | {row['false_alarm']} | {row['miss']} |")
+    lines += [
+        "",
+        "## Interpretation",
+        "",
+        "The full fusion policy treats radar apnea as a strong risk signal, uses cry as a supporting signal, and treats environment as context. Single-modality policies are intentionally simpler and can over-alert on isolated signals.",
+        "",
+        "## Limits",
+        "",
+        "- This is a controlled software scenario evaluation, not a real sensor or clinical test.",
+        "- Debounce/cooldown behavior is implemented in the live `Fusion` subscriber, not in this stateless scenario table.",
+    ]
+    (RESULTS / "FUSION_EVALUATION_RESULT.md").write_text("\n".join(lines) + "\n")
+
+
+def main():
+    rows = []
+    print("scenario,expected," + ",".join(POLICIES))
+    for name, r, c, e, expected in SCENARIOS:
+        row = {"scenario": name, "expected": "alert" if expected else "normal"}
+        for policy_name, policy in POLICIES.items():
+            level, _ = policy(r, c, e)
+            row[policy_name] = level
+        rows.append(row)
+        print(",".join([row["scenario"], row["expected"]] + [row[p] for p in POLICIES]))
+
+    summary = []
+    print("\npolicy,false_alarm,miss")
+    for policy_name, policy in POLICIES.items():
+        fa, miss = evaluate(policy)
+        summary.append({"policy": policy_name, "false_alarm": fa, "miss": miss})
+        print(f"{policy_name},{fa},{miss}")
+    write_outputs(rows, summary)
 
     ablation()
 

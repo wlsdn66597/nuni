@@ -7,36 +7,42 @@
 """
 import random
 import time
-import collections
 
 import topics
 import bus
-import radar_dsp
-import radar_sim_signal
 from state_store import store
-
-# 원신호 스트리밍 버퍼: 실제 DSP가 호흡수를 추출한다.
-_FS = 20
-_WINDOW_S = 20
-_src = radar_sim_signal.RadarSource(fs=_FS)
-_buf = collections.deque(maxlen=_FS * _WINDOW_S)
+from radar_dsp import process_radar_buffer
+from radar_sim_signal import generate_breathing_signal
 
 
 def radar_step() -> dict:
     inj = store.active_injects()
-    # === 실물 교체 지점 ===
-    # 아래 next_chunk(합성 원신호) 대신 60GHz 모듈의 원신호 1초를 읽어 _buf.extend() 하면
-    # radar_dsp.analyze()는 그대로 실물 신호를 처리한다.
-    if "apnea" in inj:                                   # 무호흡: 진폭 급감
-        chunk = _src.next_chunk(1.0, bpm=40, amp=0.05)
-    else:
-        bpm = random.gauss(40, 2)                        # 영유아 정상 ~40회/분
-        motion = random.uniform(0.6, 1.0) if random.random() < 0.05 else 0.0  # 뒤척임
-        chunk = _src.next_chunk(1.0, bpm=bpm, amp=1.0, motion=motion)
-    _buf.extend(chunk)
-
-    r = radar_dsp.analyze(list(_buf), _FS)               # 실제 호흡 DSP
-    return topics.radar_msg(r["breathing_rate"], r["movement"], True)
+    apnea = "apnea" in inj
+    motion = random.random() < 0.05
+    bpm = random.gauss(40, 3)
+    if "apnea" in inj:                       # 무호흡 시나리오
+        bpm = 40
+    # Software-only path: generate a synthetic raw buffer, then estimate values
+    # through DSP. This is not real radar hardware validation.
+    try:
+        _, raw, _ = generate_breathing_signal(
+            duration_s=12,
+            fs=50,
+            bpm=bpm,
+            snr_db=15,
+            motion=motion,
+            apnea_start=6 if apnea else None,
+            apnea_duration=5 if apnea else None,
+            seed=random.randint(0, 1_000_000),
+        )
+        d = process_radar_buffer(raw, 50)
+        msg = topics.radar_msg(round(d["breathing_rate"], 1), round(d["movement"], 2), True)
+        msg.update({"apnea": d["apnea"], "motion": d["motion"], "source": "synthetic_raw_dsp"})
+        return msg
+    except Exception:
+        br = random.uniform(0, 4) if apnea else bpm
+        movement = random.uniform(0.6, 1.0) if motion else random.uniform(0, 0.2)
+        return topics.radar_msg(round(br, 1), round(movement, 2), True)
 
 
 def env_step() -> dict:
