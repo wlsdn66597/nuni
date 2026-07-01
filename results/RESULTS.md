@@ -2,9 +2,9 @@
 
 ## Environment
 
-- Python: 3.9.7
-- Git commit: `3d11c5fc76ac2aa1804b912ed180cce0256ea4da`
-- Generated at: 2026-07-01 23:33:21
+- Python: 3.10.12
+- Git commit: `e813f2279cc545f889380f2ecda135d307a62ba1`
+- Generated at: 2026-07-01 23:56:36
 
 ## Summary
 
@@ -12,7 +12,6 @@
 |---|---|---|
 | Basic validation | compileall success | `results/logs/compileall.log` |
 | Radar DSP | synthetic BPM MAE 0.5 breaths/min | `results/RADAR_DSP_RESULT.md` |
-| Radar robustness | SNR x window MAE sweep | `results/RADAR_ROBUSTNESS_RESULT.md` |
 | Fusion | full fusion false alarm 0, miss 0 | `results/FUSION_EVALUATION_RESULT.md` |
 | Fusion vs radar-only | radar-only miss 2 (fusion catches) | `results/artifacts/fusion_ablation_summary.csv` |
 | Single baseline | false alarm 6, miss 0 | `results/artifacts/fusion_ablation_summary.csv` |
