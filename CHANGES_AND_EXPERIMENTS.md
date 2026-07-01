@@ -15,6 +15,7 @@
 | `radar_dsp.py` | 레이더 원신호 → 호흡수/무호흡/움직임 | FFT 호흡대역 피크, 무호흡=최근 4s RMS, 움직임=최근 2s 고주파 |
 | `radar_sim_signal.py` | 합성 원신호 생성 | 설정 BPM=GT, 무호흡/움직임/잡음 포함 |
 | `eval_radar.py` | 호흡 DSP 검증 | 설정 BPM 대비 MAE + 무호흡/움직임 스모크 |
+| `eval_radar_robustness.py` | 호흡 강건성 스윕 | SNR×윈도우별 MAE |
 | `eval_stream.py` | 시계열 융합 검증 | 디바운스·쿨다운의 알림/지연/오경보 효과 |
 | `voice_intent.py` | 부모 음성 인텐트 | 키워드(+STT 훅) 인식, 정확도 평가 |
 | `cloud.py` | 클라우드 스텁 | 비식별 이벤트 → 아침 수면 리포트 |
@@ -70,10 +71,12 @@ python cry_model/train.py cry_model/data --aug 2   # 증강 적용 → Macro-F1 
 - 목적: 데이터 증강이 일반화에 주는 효과를 정량 비교(ablation).
 - 기록: 두 경우의 Macro-F1 값(표로).
 
-### 실험 5 — 레이더 강건성 곡선 (선택, 코드 소폭 수정 필요)
-- `eval_radar.py`의 케이스 생성부에서 SNR(예: 5·10·15·20dB)·윈도우(15·30·60s)를 바꿔가며 MAE를 측정.
-- 목적: "잡음/관측시간이 정확도에 주는 영향" 곡선 확보.
-- 기록: (SNR, window) → MAE 표.
+### 실험 5 — 레이더 강건성 스윕 (권장, 실행 가능)
+```bash
+python eval_radar_robustness.py     # run_all.sh 에도 포함됨
+```
+- 목적: SNR(5·10·15·20dB) × 관측 윈도우(15·30·60s)에 따른 호흡수 MAE 표 확보.
+- 기록: `results/RADAR_ROBUSTNESS_RESULT.md`, `results/artifacts/radar_robustness.csv`.
 
 ---
 
@@ -84,6 +87,7 @@ python cry_model/train.py cry_model/data --aug 2   # 증강 적용 → Macro-F1 
 |---|---|---|
 | `results/RESULTS.md` | 전체 요약(환경·커밋·핵심 수치) | 구현기능 개요 |
 | `results/RADAR_DSP_RESULT.md` + `artifacts/radar_bpm_*.csv` | BPM MAE, 무호흡 지연, 움직임 | 구현기능 — 호흡 |
+| `results/RADAR_ROBUSTNESS_RESULT.md` + `artifacts/radar_robustness.csv` | SNR×윈도우별 MAE | 구현기능 — 호흡 강건성 |
 | `results/FUSION_EVALUATION_RESULT.md` + `artifacts/fusion_*.csv` | 정책별 오탐/미탐, ablation | 구현기능 — 융합 |
 | `results/STREAM_EVAL_RESULT.md` + `artifacts/stream_eval_summary.csv` | 디바운스/쿨다운 효과 | 구현기능 — 알림 신뢰성 |
 | `results/VOICE_INTENT_RESULT.md` | 음성 인텐트 인식률 | 구현기능 — 음성 |
@@ -107,6 +111,7 @@ python cry_model/train.py cry_model/data --aug 2   # 증강 적용 → Macro-F1 
 - 융합: full_fusion 오탐 0·미탐 0 / single 6·0 / radar_only 0·2
 - 스트리밍: 알림 4→1, 일시 오경보 3→0, 무호흡 지연 1s
 - 음성 인텐트: curated 세트 100%(실환경은 낮아짐, 한계 명시)
+- 레이더 강건성: 15s 창 MAE≈1.0, 30s 이상 ≈0.0 (합성, SNR 5~20dB 영향 미미)
 
 ---
 

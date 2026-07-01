@@ -41,6 +41,8 @@ nuni_demo/
 ├─ fusion.py            # 멀티모달 융합 판단 + 단일센서 비교 정책
 ├─ workers.py           # inproc 백그라운드 워커 기동
 ├─ app.py               # Streamlit 실시간 대시보드
+├─ eval_radar.py        # 레이더 호흡 DSP 검증 (MAE)
+├─ eval_radar_robustness.py  # 레이더 강건성 스윕 (SNR·윈도우)
 ├─ eval_fusion.py       # 융합 vs 단일센서 오탐/미탐 평가 (+경계신호 교차검증)
 ├─ eval_stream.py       # 스트리밍 시계열 평가 (디바운스·쿨다운 검증)
 ├─ voice_intent.py      # 부모 음성 인텐트 인식 (키워드/STT)

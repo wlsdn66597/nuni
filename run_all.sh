@@ -3,25 +3,28 @@ set -euo pipefail
 
 mkdir -p results/logs results/artifacts
 
-echo "[1/8] compileall"
+echo "[1/9] compileall"
 python -m compileall . | tee results/logs/compileall.log
 
-echo "[2/8] radar synthetic DSP evaluation"
+echo "[2/9] radar synthetic DSP evaluation"
 python eval_radar.py | tee results/logs/eval_radar.log
 
-echo "[3/8] fusion controlled scenario evaluation"
+echo "[3/9] radar robustness sweep (SNR x window)"
+python eval_radar_robustness.py | tee results/logs/eval_radar_robustness.log
+
+echo "[4/9] fusion controlled scenario evaluation"
 python eval_fusion.py | tee results/logs/eval_fusion.log
 
-echo "[4/8] streaming fusion evaluation (debounce/cooldown)"
+echo "[5/9] streaming fusion evaluation (debounce/cooldown)"
 python eval_stream.py | tee results/logs/eval_stream.log
 
-echo "[5/8] voice intent evaluation"
+echo "[6/9] voice intent evaluation"
 python voice_intent.py | tee results/logs/voice_intent.log
 
-echo "[6/8] cloud sleep report"
+echo "[7/9] cloud sleep report"
 python cloud.py | tee results/logs/cloud.log
 
-echo "[7/8] dashboard/import smoke"
+echo "[8/9] dashboard/import smoke"
 python - <<'PY' | tee results/logs/dashboard_import_smoke.log
 mods = ["streamlit", "topics", "bus", "sim_sensors", "fusion", "workers", "state_store"]
 for mod in mods:
@@ -29,7 +32,7 @@ for mod in mods:
     print(f"[OK] import {mod}")
 PY
 
-echo "[8/8] write summary"
+echo "[9/9] write summary"
 python - <<'PY'
 import csv
 import subprocess
