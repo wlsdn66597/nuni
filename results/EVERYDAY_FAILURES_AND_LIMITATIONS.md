@@ -41,7 +41,7 @@
 - 의료/진단 목적 성능 검증이 아니다.
 - 무호흡/호흡이상은 드문 안전 백업 기능으로만 배치해야 한다.
 - 울음은 `is_crying` 감지 신호로만 사용하며, 울음 이유 분류 실사용 성능을 주장하면 안 된다.
-- `eval_personalization.py`는 `hash(name)` 기반 seed를 사용해 프로세스마다 학습 BPM이 소폭 달라질 수 있다. 최종 산출물 기준 값은 babyA 40.4, babyB 51.7이다.
+- `eval_personalization.py`는 이제 고정 seed(1000+index)를 사용해 재현 가능하다. 결정적 값은 babyA 40.1, babyB 51.7이다. (이전 hash 기반 비결정성 수정됨)
 
 ## 5. 보고서/README에서 피해야 할 표현
 

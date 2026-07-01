@@ -24,8 +24,8 @@ def run_one(true_bpm, seed):
 def main():
     RESULTS.mkdir(exist_ok=True); ART.mkdir(parents=True, exist_ok=True)
     rows = []
-    for name, true_bpm in HOUSEHOLDS.items():
-        p = run_one(true_bpm, seed=hash(name) % 1000)
+    for i, (name, true_bpm) in enumerate(HOUSEHOLDS.items()):
+        p = run_one(true_bpm, seed=1000 + i)   # 고정 seed → 재현 가능
         s = p.summary()
         err = abs(s["bpm_mean"] - true_bpm)
         rows.append({"household": name, "true_bpm": true_bpm,

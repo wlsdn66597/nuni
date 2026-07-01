@@ -192,3 +192,4 @@ streamlit run app.py
 | `audio/voice` | `{intent, ts}` |
 | `fusion/state` | `{level(normal/attention/alert), reasons[], ts}` |
 | `fusion/alert` | `{level, reason, ts}` |
+| `control/action` | `{actions[], ts}` |
