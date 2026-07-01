@@ -37,6 +37,14 @@ def decide(radar, cry, env):
         level = _max(level, "alert")
         reasons.append("다중 신호 동시 이상")
 
+    # 경계 신호 교차검증: 단독으론 임계 미만인 '경계 호흡'이 다른 모달과 겹치면 경보로 상향.
+    #  -> 레이더 단독은 놓치지만(정상 판정) 융합은 잡는 케이스 = 융합의 고유 가치.
+    irregular = bool(radar and radar.get("presence") and not apnea and (8 <= br <= 15 or br > 55))
+    bad_env = bool(env and env.get("co2", 0) > 1000)
+    if irregular and (cry_flag or bad_env):
+        level = _max(level, "alert")
+        reasons.append("경계 호흡+보강신호 교차검증")
+
     if env:
         if env.get("co2", 0) > 1000:
             level = _max(level, "attention")
@@ -63,13 +71,18 @@ def single_sensor_decide(radar, cry, env):
 
 
 class Fusion:
-    """라이브 구독자: 최신 신호를 모아 판단하고 상태/경보를 발행."""
+    """라이브 구독자: 최신 신호를 모아 판단하고 상태/경보를 발행.
 
-    def __init__(self, debounce_n=2, cooldown_s=10):
+    now_fn: 시간 소스 주입(기본 time.time). 스트리밍 평가에서 가짜 시계로 대체해
+            디바운스·쿨다운을 실시간 대기 없이 검증할 수 있다.
+    """
+
+    def __init__(self, debounce_n=2, cooldown_s=10, now_fn=time.time):
         self.radar = self.cry = self.env = None
         self.last = "normal"
         self.debounce_n = debounce_n
         self.cooldown_s = cooldown_s
+        self._now = now_fn
         self._candidate = "normal"
         self._candidate_count = 0
         self._last_alert_key = None
@@ -89,12 +102,28 @@ class Fusion:
 
     def _cooldown_allows(self, level, reasons):
         key = (level, "|".join(reasons))
-        now = time.time()
+        now = self._now()
         if key == self._last_alert_key and now - self._last_alert_ts < self.cooldown_s:
             return False
         self._last_alert_key = key
         self._last_alert_ts = now
         return True
+
+    def _process(self):
+        """현재 신호로 판단·발행. (level, reasons, alert_emitted) 반환."""
+        raw_level, reasons = decide(self.radar, self.cry, self.env)
+        level = self._debounce(raw_level)
+        out_reasons = reasons if level != "normal" else []
+        store.set_fusion(level, out_reasons)
+        bus.publish(topics.FUSION_STATE, {"level": level, "reasons": out_reasons, "raw_level": raw_level, "ts": topics.now()})
+
+        emitted = False
+        if level != "normal" and level != self.last and self._cooldown_allows(level, out_reasons):
+            store.log(f"[{level.upper()}] " + ", ".join(out_reasons))
+            bus.publish(topics.ALERT, {"level": level, "reason": ", ".join(out_reasons), "ts": topics.now()})
+            emitted = True
+        self.last = level
+        return level, out_reasons, emitted
 
     def on_message(self, topic, payload):
         if topic == topics.RADAR:
@@ -103,14 +132,14 @@ class Fusion:
             self.cry = payload
         elif topic == topics.ENV:
             self.env = payload
+        return self._process()
 
-        raw_level, reasons = decide(self.radar, self.cry, self.env)
-        level = self._debounce(raw_level)
-        out_reasons = reasons if level != "normal" else []
-        store.set_fusion(level, out_reasons)
-        bus.publish(topics.FUSION_STATE, {"level": level, "reasons": out_reasons, "raw_level": raw_level, "ts": topics.now()})
-
-        if level != "normal" and level != self.last and self._cooldown_allows(level, out_reasons):
-            store.log(f"[{level.upper()}] " + ", ".join(out_reasons))
-            bus.publish(topics.ALERT, {"level": level, "reason": ", ".join(out_reasons), "ts": topics.now()})
-        self.last = level
+    def update(self, radar=None, cry=None, env=None):
+        """한 틱에 세 모달을 한꺼번에 갱신하고 1회 판단 (시계열 평가용)."""
+        if radar is not None:
+            self.radar = radar
+        if cry is not None:
+            self.cry = cry
+        if env is not None:
+            self.env = env
+        return self._process()

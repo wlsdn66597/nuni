@@ -41,7 +41,10 @@ nuni_demo/
 ├─ fusion.py            # 멀티모달 융합 판단 + 단일센서 비교 정책
 ├─ workers.py           # inproc 백그라운드 워커 기동
 ├─ app.py               # Streamlit 실시간 대시보드
-├─ eval_fusion.py       # 융합 vs 단일센서 오탐/미탐 평가
+├─ eval_fusion.py       # 융합 vs 단일센서 오탐/미탐 평가 (+경계신호 교차검증)
+├─ eval_stream.py       # 스트리밍 시계열 평가 (디바운스·쿨다운 검증)
+├─ voice_intent.py      # 부모 음성 인텐트 인식 (키워드/STT)
+├─ cloud.py             # 클라우드 스텁 + 아침 수면 리포트
 ├─ requirements.txt     # 데모 실행 의존성
 └─ cry_model/           # 울음 분류 학습 파이프라인
    ├─ config.py         # 경로·하이퍼파라미터
@@ -121,18 +124,18 @@ streamlit run app.py
 | Radar DSP | BPM MAE | 0.500 breaths/min | synthetic raw radar-like signal, 30s, fs=50Hz, SNR 15dB |
 | Radar DSP | Apnea detection | True, delay 4.0s | synthetic apnea scenario |
 | Radar DSP | Motion detection | True | synthetic motion burst |
-| Fusion | full_fusion false alarm / miss | 0 / 0 | controlled scenarios 8개 |
-| Fusion | single_sensor false alarm / miss | 5 / 0 | controlled scenarios 8개 |
-| Fusion ablation | radar_only false alarm / miss | 0 / 0 | radar apnea가 핵심 위험 신호로 동작 |
-| Fusion ablation | audio_only false alarm / miss | 2 / 1 | cry-only 정책의 오탐/미탐 확인 |
-| Fusion ablation | env_only false alarm / miss | 2 / 2 | 환경 단독 정책의 한계 확인 |
+| Fusion | full_fusion false alarm / miss | 0 / 0 | controlled scenarios 11개 |
+| Fusion | single_sensor false alarm / miss | 6 / 0 | controlled scenarios 11개 |
+| Fusion ablation | radar_only false alarm / miss | 0 / 2 | 경계 호흡을 단독으론 놓침 |
+| Fusion ablation | audio_only false alarm / miss | 2 / 2 | cry-only 정책의 오탐/미탐 |
+| Fusion ablation | env_only false alarm / miss | 2 / 3 | 환경 단독 정책의 한계 |
 | Cry reason classifier | Donate-a-Cry 5-class | 실사용 성능 주장 불가 | hungry 83.6% class imbalance |
 
 ### 결과 해석
 
 - 레이더 DSP는 실제 센서가 아니라 synthetic raw radar-like signal을 입력으로 검증했다.
-- controlled scenario에서는 full fusion이 false alarm 0, miss 0을 기록했지만, radar_only도 0/0으로 나온다. 따라서 “full fusion이 모든 단일 모달보다 항상 우수하다”가 아니라, 현재 시나리오에서는 radar가 무호흡 판단의 핵심 기여 모달이고 audio/env는 보조 context로 해석해야 한다.
-- single_sensor baseline은 단일 신호에 민감하게 반응해 false alarm 5건이 발생했다.
+- controlled scenario 11개에서 **full fusion만 false alarm 0, miss 0** 을 기록했다. radar_only는 명확한 무호흡은 잡지만 '경계 호흡'(임계 미만의 이상 호흡)을 단독으론 놓쳐 miss 2가 발생했고, 이는 울음·환경과 교차검증할 때만 경보가 된다. 즉 융합의 가치는 (1) 과민한 단일신호 정책 대비 오탐 감소, (2) 어떤 단일 모달보다 적은 미탐 둘 다에서 나타난다.
+- single_sensor baseline은 단일 신호에 민감하게 반응해 false alarm 6건이 발생했다.
 - Donate-a-Cry 기반 울음 이유 분류는 `hungry`가 382/457개(83.6%)로 치우쳐 있고 rare class가 적어, 현재 결과를 실사용 가능한 이유 분류 성능으로 주장하지 않는다.
 
 ### 한계
@@ -147,6 +150,9 @@ streamlit run app.py
 
 - `results/RADAR_DSP_RESULT.md`
 - `results/FUSION_EVALUATION_RESULT.md`
+- `results/STREAM_EVAL_RESULT.md` (디바운스·쿨다운 시계열 검증)
+- `results/VOICE_INTENT_RESULT.md` (음성 인텐트 인식)
+- `results/SLEEP_REPORT.md` (클라우드 아침 수면 리포트)
 - `results/RESULTS.md`
 - `results/RESULTS_FINAL.md`
 

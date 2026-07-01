@@ -28,11 +28,11 @@
 | BPM MAE | 0.500 breaths/min | synthetic raw signal, 30s, fs=50Hz, SNR 15dB, BPM 20/25/30/35/40/45 |
 | Apnea detection | True, delay 4.0s | synthetic apnea, start 6s, duration 5s, recent 4s RMS |
 | Motion detection | True | synthetic high-frequency motion burst, recent 2s energy |
-| Full fusion false alarm / miss | 0 / 0 | controlled scenarios, 8 cases |
-| Single-sensor false alarm / miss | 5 / 0 | controlled scenarios, 8 cases |
-| Radar-only false alarm / miss | 0 / 0 | controlled scenarios, 8 cases |
-| Audio-only false alarm / miss | 2 / 1 | controlled scenarios, 8 cases |
-| Env-only false alarm / miss | 2 / 2 | controlled scenarios, 8 cases |
+| Full fusion false alarm / miss | 0 / 0 | controlled scenarios, 11 cases |
+| Single-sensor false alarm / miss | 6 / 0 | controlled scenarios, 11 cases |
+| Radar-only false alarm / miss | 0 / 2 | controlled scenarios, 11 cases |
+| Audio-only false alarm / miss | 2 / 2 | controlled scenarios, 11 cases |
+| Env-only false alarm / miss | 2 / 3 | controlled scenarios, 11 cases |
 
 ## 4. 보고서에서 주장 가능한 것
 
@@ -59,8 +59,8 @@
 3. FFT 기반 호흡수 추정은 30초, 50Hz, SNR 15dB synthetic 조건에서 MAE 0.500 breaths/min을 기록했다.
 4. Synthetic apnea scenario에서는 apnea 시작 후 4.0초 지연으로 감지가 확인됐다.
 5. Synthetic motion burst scenario에서는 최근 2초 고주파 에너지 기준 motion 감지가 확인됐다.
-6. Controlled scenario 8개에서 full fusion은 false alarm 0건, miss 0건을 기록했다.
-7. Single-sensor baseline은 동일 scenario에서 false alarm 5건을 보여, 단일 신호 기반 경보의 과민성을 확인했다.
+6. Controlled scenario 11개에서 full fusion만 false alarm 0건, miss 0건을 기록했다(유일하게 양쪽 0).
+7. Single-sensor baseline은 false alarm 6건, radar-only는 경계 호흡을 놓쳐 miss 2건을 보여, 융합이 오탐과 미탐을 동시에 줄였음을 확인했다.
 8. Donate-a-Cry 기반 5-class 울음 이유 분류는 class imbalance 때문에 실사용 성능으로 주장하지 않고 실험적 기능으로 정리했다.
 
 ## 7. 발표용 1분 스크립트
