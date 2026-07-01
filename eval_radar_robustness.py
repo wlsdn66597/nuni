@@ -67,11 +67,11 @@ def main():
         "",
         "## Interpretation",
         "",
-        "- 관측 윈도우가 길수록 FFT 주파수 해상도가 높아져 MAE가 낮아진다.",
-        "- SNR이 낮을수록(잡음↑) MAE가 커진다.",
-        "- 실사용 목표 정확도에 맞춰 최소 관측 윈도우/허용 SNR을 정할 근거로 사용.",
+        "- 관측 윈도우가 길수록 FFT 주파수 해상도가 높아져 MAE가 낮아진다 (15s: MAE 약 1.0, 30s/60s: 약 0.0).",
+        "- 이번 스윕에서 SNR 5~20dB 간 MAE 차이는 관측되지 않았고, window length가 지배적이었다.",
+        "- 따라서 실사용 목표 정확도는 (이 조건에서는) 최소 관측 윈도우로 결정된다.",
     ]
-    (RESULTS / "RADAR_ROBUSTNESS_RESULT.md").write_text("\n".join(md) + "\n")
+    (RESULTS / "RADAR_ROBUSTNESS_RESULT.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
