@@ -3,16 +3,16 @@ set -euo pipefail
 
 mkdir -p results/logs results/artifacts
 
-echo "[1/12] compileall"
+echo "[1/16] compileall"
 python -m compileall . | tee results/logs/compileall.log
 
-echo "[2/12] radar synthetic DSP evaluation"
+echo "[2/16] radar synthetic DSP evaluation"
 python eval_radar.py | tee results/logs/eval_radar.log
 
-echo "[3/12] radar robustness sweep (SNR x window)"
+echo "[3/16] radar robustness sweep (SNR x window)"
 python eval_radar_robustness.py | tee results/logs/eval_radar_robustness.log
 
-echo "[4/12] fusion controlled scenario evaluation"
+echo "[4/16] fusion controlled scenario evaluation"
 python eval_fusion.py | tee results/logs/eval_fusion.log
 
 echo "[5/16] streaming fusion evaluation (debounce/cooldown)"
