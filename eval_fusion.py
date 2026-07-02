@@ -131,7 +131,7 @@ def write_outputs(rows, summary):
         "- This is a controlled software scenario evaluation, not a real sensor or clinical test.",
         "- Debounce/cooldown behavior is implemented in the live `Fusion` subscriber, not in this stateless scenario table.",
     ]
-    (RESULTS / "FUSION_EVALUATION_RESULT.md").write_text("\n".join(lines) + "\n")
+    (RESULTS / "FUSION_EVALUATION_RESULT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main():

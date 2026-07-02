@@ -125,7 +125,7 @@ def write_markdown(bpm_rows, mae, apnea, motion):
         "- Do not claim real infant apnea detection.",
         "- Do not claim real-world motion robustness.",
     ]
-    (RESULTS / "RADAR_DSP_RESULT.md").write_text("\n".join(lines) + "\n")
+    (RESULTS / "RADAR_DSP_RESULT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main():

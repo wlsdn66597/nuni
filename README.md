@@ -46,11 +46,15 @@ nuni_demo/
 ├─ app.py               # Streamlit 실시간 대시보드
 ├─ eval_radar.py        # 레이더 호흡 DSP 검증 (MAE)
 ├─ eval_radar_robustness.py  # 레이더 강건성 스윕 (SNR·윈도우)
+├─ eval_radar_realistic.py   # 현실적 레이더 DSP (range-bin 선택+디트렌드+대역통과)
 ├─ eval_fusion.py       # 융합 vs 단일센서 오탐/미탐 평가 (+경계신호 교차검증)
+├─ eval_fusion_noisy.py # 노이즈 몬테카를로 융합 강건성 재증명
 ├─ eval_stream.py       # 스트리밍 시계열 평가 (디바운스·쿨다운 검증)
 ├─ sleep_state.py       # 수면/각성 상태 분류 (일상 헤드라인) + eval_sleep_state.py
 ├─ personalization.py   # 경량 개인화(적응형 baseline) + eval_personalization.py
 ├─ env_control.py       # 선제 환경 제어 권고 + eval_env_control.py
+├─ cry_context.py       # 울음-맥락 상관 분석 + eval_cry_context.py
+├─ sleep_rhythm.py      # 수면 리듬 → 루틴 인사이트 + eval_sleep_rhythm.py
 ├─ voice_intent.py      # 부모 음성 인텐트 인식 (키워드/STT)
 ├─ cloud.py             # 클라우드 스텁 + 아침 수면 리포트
 ├─ requirements.txt     # 데모 실행 의존성
@@ -159,9 +163,13 @@ streamlit run app.py
 - `results/RADAR_DSP_RESULT.md`
 - `results/FUSION_EVALUATION_RESULT.md`
 - `results/STREAM_EVAL_RESULT.md` (디바운스·쿨다운 시계열 검증)
+- `results/FUSION_NOISY_RESULT.md` (노이즈 몬테카를로 융합 강건성)
+- `results/RADAR_REALISTIC_RESULT.md` (현실적 레이더 DSP)
 - `results/SLEEP_STATE_RESULT.md` (수면/각성 상태 분류)
 - `results/PERSONALIZATION_RESULT.md` (개인화 적응)
 - `results/ENV_CONTROL_RESULT.md` (선제 환경 제어)
+- `results/CRY_CONTEXT_RESULT.md` (울음-맥락 상관)
+- `results/SLEEP_RHYTHM_RESULT.md` (수면 리듬 루틴 인사이트)
 - `results/VOICE_INTENT_RESULT.md` (음성 인텐트 인식)
 - `results/SLEEP_REPORT.md` (클라우드 아침 수면 리포트)
 - `results/RESULTS.md`

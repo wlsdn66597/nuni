@@ -117,7 +117,7 @@ def main():
     ]
     md += [f"| {t} | {e} | {p} | {'O' if ok else 'X'} |" for t, e, p, ok in rows]
     md += ["", "## 한계", "", "- 키워드 기반이라 표현이 크게 벗어나면 unknown 처리된다. 실물은 Vosk STT + 동일 규칙."]
-    (results / "VOICE_INTENT_RESULT.md").write_text("\n".join(md) + "\n")
+    (results / "VOICE_INTENT_RESULT.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

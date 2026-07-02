@@ -101,7 +101,7 @@ def main():
         "",
         "- Synthetic timeline only; not a real sensor or clinical validation.",
     ]
-    (RESULTS / "STREAM_EVAL_RESULT.md").write_text("\n".join(md) + "\n")
+    (RESULTS / "STREAM_EVAL_RESULT.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

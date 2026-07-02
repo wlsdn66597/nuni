@@ -80,3 +80,54 @@ def process_radar_buffer(signal, fs):
         "motion": bool(motion),
         "movement": 1.0 if motion else 0.1,
     }
+
+
+# ---- 현실적 전처리: range-bin 선택 + 디트렌드 + 대역통과 ----
+def _band_energy(sig, fs, low=0.1, high=1.0):
+    x = _as_float_array(sig)
+    if len(x) < 4:
+        return 0.0
+    X = np.abs(np.fft.rfft((x - np.mean(x)) * np.hanning(len(x)))) ** 2
+    f = np.fft.rfftfreq(len(x), d=1.0 / fs)
+    return float(X[(f >= low) & (f <= high)].sum())
+
+
+def select_range_bin(bins, fs):
+    """여러 거리 bin 중 호흡대역 에너지가 가장 큰 bin 선택."""
+    bins = np.asarray(bins, dtype=float)
+    if bins.ndim == 1:
+        return 0
+    return int(np.argmax([_band_energy(bins[i], fs) for i in range(bins.shape[0])]))
+
+
+def detrend(sig):
+    """선형 추세(DC·드리프트) 제거."""
+    x = _as_float_array(sig)
+    n = len(x)
+    if n < 2:
+        return x
+    t = np.arange(n)
+    a, b = np.polyfit(t, x, 1)
+    return x - (a * t + b)
+
+
+def bandpass_fft(sig, fs, low=0.1, high=1.0):
+    """FFT 도메인 대역통과(호흡대역만 통과)."""
+    x = _as_float_array(sig)
+    n = len(x)
+    if n < 4:
+        return x
+    X = np.fft.rfft(x)
+    f = np.fft.rfftfreq(n, d=1.0 / fs)
+    X[(f < low) | (f > high)] = 0
+    return np.fft.irfft(X, n=n)
+
+
+def estimate_bpm_realistic(bins, fs):
+    """현실적 파이프라인: range-bin 선택 → 디트렌드 → 대역통과 → FFT 피크. (bpm, bin) 반환."""
+    bins = np.asarray(bins, dtype=float)
+    if bins.ndim == 1:
+        bins = bins[None, :]
+    idx = select_range_bin(bins, fs)
+    sig = bandpass_fft(detrend(bins[idx]), fs)
+    return estimate_bpm_fft(sig, fs), idx

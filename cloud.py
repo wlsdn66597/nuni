@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from personalization import Personalizer
+import cry_context
 
 RESULTS = Path("results")
 ART = RESULTS / "artifacts"
@@ -39,6 +40,7 @@ def simulate_night(hours=8, seed=7):
             "movement": round(float(rng.uniform(0.3, 0.8) if cry else rng.uniform(0, 0.2)), 2),
             "co2": int(np.clip(rng.normal(680 + m * 0.15, 60), 400, 1500)),
             "temp": round(float(rng.normal(22, 0.4)), 1),
+            "humidity": round(float(np.clip(rng.normal(48 - m / mins * 12, 3), 20, 70)), 1),
         })
     return recs
 
@@ -93,6 +95,8 @@ def write_report(recs, s):
 
     hours = s["monitored_min"] / 60
     hour_lines = "\n".join(f"| {h}시간대 | {c}분 |" for h, c in sorted(s["cry_by_hour"].items())) or "| - | 0 |"
+    cc = cry_context.analyze(recs)
+    cc_lines = "\n".join(f"- {t}" for t in cc["insights"])
     md = f"""# 아침 수면 리포트 (클라우드 · 비실시간)
 
 > 엣지가 업로드한 **비식별 이벤트/특징만** 사용한다. 원시 음성·레이더 신호는 전송하지 않는다.
@@ -114,6 +118,10 @@ def write_report(recs, s):
 |---|---|
 {hour_lines}
 
+## 울음-맥락 상관
+
+{cc_lines}
+
 ## 개인화(추세 기반) 제언
 
 - 학습된 개인 정상 호흡 범위: {s['personal_bpm_range']} 회/분 (이 아기 기준으로 임계값 보정).
@@ -124,7 +132,7 @@ def write_report(recs, s):
 
 - 본 리포트는 합성 야간 데이터 기반이며, 실제 영유아·임상 검증이 아니다.
 """
-    (RESULTS / "SLEEP_REPORT.md").write_text(md)
+    (RESULTS / "SLEEP_REPORT.md").write_text(md, encoding="utf-8")
     _try_plot(recs)
 
 
